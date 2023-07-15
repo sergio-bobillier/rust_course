@@ -25,6 +25,63 @@
 //
 //     let positive_number: u32 = some_string.parse().expect("Failed to parse a number");
 
+use clap::{arg, command, value_parser, ArgAction, Command};
+use image::{DynamicImage, Rgb};
+use rand::Rng;
+
+struct Geometry{
+    top: u32,
+    left: u32,
+    height: Option<u32>,
+    width: Option<u32>
+}
+
+const VALID_ANGLES:[u16; 3] = [90, 180, 270];
+
+fn valid_angle(value: &str) -> Result<u16, String> {
+    let angle = value.parse::<u16>().map_err(|_| format!("--angle must be an integer, '{value}' given"))?;
+
+    if VALID_ANGLES.contains(&angle) {
+        Ok(angle)
+    } else {
+        Err(
+            format!("Valid angles are {:?}", VALID_ANGLES)
+        )
+    }
+}
+
+fn parse_color(value: Option<&String>) -> [u8; 3] {
+    match value {
+        Some(color) => {
+            if color == "random" {
+                let mut rng = rand::thread_rng();
+
+                [
+                    rng.gen(),
+                    rng.gen(),
+                    rng.gen()
+                ]
+            }
+            else {
+                let parts: Vec<&str> = color.split(",").map(|string| { string.trim() }).collect();
+
+                if parts.len() != 3 {
+                    panic!("The given color doesn't have the format: r, g, b (all integers betweem 0 and 255)");
+                }
+
+                [
+                    parts[0].parse::<u8>().unwrap(),
+                    parts[1].parse::<u8>().unwrap(),
+                    parts[2].parse::<u8>().unwrap()
+                ]
+            }
+        }
+        None => {
+            [0, 0, 0]
+        }
+    }
+}
+
 fn main() {
     // 1. First, you need to implement some basic command-line argument handling
     // so you can make your program do different things.  Here's a little bit
@@ -32,146 +89,294 @@ fn main() {
     //
     // Challenge: If you're feeling really ambitious, you could delete this code
     // and use the "clap" library instead: https://docs.rs/clap/2.32.0/clap/
-    let mut args: Vec<String> = std::env::args().skip(1).collect();
-    if args.is_empty() {
-        print_usage_and_exit();
+
+    // * Blur
+    // * Brighten
+    // * Crop
+    // * Rotate
+    // * Invert
+    // * Grayscale
+    // * Fractsl
+
+    let matches = command!().subcommand_required(true)
+        .subcommand(
+            Command::new("blur")
+                .about("Blurs the given image")
+                .arg(arg!(<INFILE> "Input file name"))
+                .arg(arg!(<OUTFILE> "Output file name"))
+                .arg(
+                    arg!(--amount <VALUE> "how much to blur the image")
+                    .value_parser(value_parser!(f32)).default_value("2.0")
+                )
+        )
+        .subcommand(
+            Command::new("crop")
+                .about("Crops the given image to the given geometry")
+                .arg(
+                    arg!(--left <VALUE> "x-coordinate of the top-left corner of the cropped area")
+                    .value_parser(value_parser!(u32)).default_value("0")
+                )
+                .arg(
+                    arg!(--top <VALUE> "y-coordinate of top-left corner of the cropped area")
+                    .value_parser(value_parser!(u32)).default_value("0")
+                )
+                .arg(
+                    arg!(--width <VALUE> "width of the cropped area")
+                    .value_parser(value_parser!(u32)).required(false)
+                )
+                .arg(
+                    arg!(--height <VALUE> "height of the cropped area")
+                    .value_parser(value_parser!(u32)).required(false)
+                )
+                .arg(arg!(<INFILE> "Input file name"))
+                .arg(arg!(<OUTFILE> "Output file name"))
+        )
+        .subcommand(
+            Command::new("brighten")
+                .about("Brightens or dims the given image")
+                .arg(
+                    arg!(--delta <VALUE> "how much to brighten (positive) or dim (negative) the image")
+                    .value_parser(value_parser!(i32)).required(true)
+                )
+                .arg(arg!(<INFILE> "Input file name"))
+                .arg(arg!(<OUTFILE> "Output file name"))
+        )
+        .subcommand(
+            Command::new("rotate")
+                .about("Rotates the given image clockwise by the given angle")
+                .arg(
+                    arg!(--angle <VALUE> "what angle to use to rotate the image, valid values are 90, 180 and 270")
+                    .value_parser(valid_angle).required(true)
+                )
+                .arg(arg!(<INFILE> "Input file name"))
+                .arg(arg!(<OUTFILE> "Output file name"))
+        )
+        .subcommand(
+            Command::new("invert")
+                .about("Inverts the color of the given image")
+                .arg(arg!(<INFILE> "Input file name"))
+                .arg(arg!(<OUTFILE> "Output file name"))
+        )
+        .subcommand(
+            Command::new("grayscale")
+                .about("Converts the given image to a grayscale image")
+                .arg(arg!(<INFILE> "Input file name"))
+                .arg(arg!(<OUTFILE> "Output file name"))
+        )
+        .subcommand(
+            Command::new("generate")
+                .about("Generates a black image with the specified dimensions")
+                .arg(
+                    arg!(--width <VALUE> "width of the generated image")
+                    .value_parser(value_parser!(u32)).required(true)
+                )
+                .arg(
+                    arg!(--height <VALUE> "height of the generated image")
+                    .value_parser(value_parser!(u32)).required(true)
+                )
+                .arg(arg!(--color <VALUE> "RGB-color of the generated image. Format: r, g, b"))
+                .arg(
+                    arg!(--noise "If given the image will be noisy instead of a solid color")
+                    .action(ArgAction::SetTrue)
+                )
+                .arg(arg!(<OUTFILE> "Output file name"))
+        )
+        .subcommand(
+            Command::new("fractal")
+                .about("Generates a fractal image")
+                .arg(arg!(<OUTFILE> "Output file name"))
+        )
+        .get_matches();
+
+    if let Some(matches) = matches.subcommand_matches("blur") {
+        let input_file = matches.get_one::<String>("INFILE").expect("required").clone();
+        let output_file = matches.get_one::<String>("OUTFILE").expect("required").clone();
+        let amount = *matches.get_one::<f32>("amount").expect("has default value");
+        blur(input_file, output_file, amount);
     }
-    let subcommand = args.remove(0);
-    match subcommand.as_str() {
-        // EXAMPLE FOR CONVERSION OPERATIONS
-        "blur" => {
-            if args.len() != 2 {
-                print_usage_and_exit();
-            }
-            let infile = args.remove(0);
-            let outfile = args.remove(0);
-            // **OPTION**
-            // Improve the blur implementation -- see the blur() function below
-            blur(infile, outfile);
-        }
 
-        // **OPTION**
-        // Brighten -- see the brighten() function below
+    if let Some(matches) = matches.subcommand_matches("crop") {
+        let input_file = matches.get_one::<String>("INFILE").expect("required").clone();
+        let output_file = matches.get_one::<String>("OUTFILE").expect("required").clone();
 
-        // **OPTION**
-        // Crop -- see the crop() function below
+        let geometry = Geometry{
+            top: *matches.get_one::<u32>("top").expect("has default value"),
+            left: *matches.get_one::<u32>("left").expect("has default value"),
+            width: matches.get_one::<u32>("width").copied(),
+            height: matches.get_one::<u32>("height").copied()
+        };
 
-        // **OPTION**
-        // Rotate -- see the rotate() function below
+        crop(input_file, output_file, geometry);
+    }
 
-        // **OPTION**
-        // Invert -- see the invert() function below
+    if let Some(matches) = matches.subcommand_matches("brighten") {
+        let input_file = matches.get_one::<String>("INFILE").expect("required").clone();
+        let output_file = matches.get_one::<String>("OUTFILE").expect("required").clone();
+        let delta = *matches.get_one::<i32>("delta").expect("required");
 
-        // **OPTION**
-        // Grayscale -- see the grayscale() function below
+        brighten(input_file, output_file, delta);
+    }
 
-        // A VERY DIFFERENT EXAMPLE...a really fun one. :-)
-        "fractal" => {
-            if args.len() != 1 {
-                print_usage_and_exit();
-            }
-            let outfile = args.remove(0);
-            fractal(outfile);
-        }
+    if let Some(matches) = matches.subcommand_matches("rotate") {
+        let input_file = matches.get_one::<String>("INFILE").expect("required").clone();
+        let output_file = matches.get_one::<String>("OUTFILE").expect("required").clone();
+        let angle = *matches.get_one::<u16>("angle").expect("required");
 
-        // **OPTION**
-        // Generate -- see the generate() function below -- this should be sort of like "fractal()"!
+        rotate(input_file, output_file, angle);
+    }
 
-        // For everything else...
-        _ => {
-            print_usage_and_exit();
-        }
+    if let Some(matches) = matches.subcommand_matches("invert") {
+        let input_file = matches.get_one::<String>("INFILE").expect("required").clone();
+        let output_file = matches.get_one::<String>("OUTFILE").expect("required").clone();
+
+        invert(input_file, output_file);
+    }
+
+    if let Some(matches) = matches.subcommand_matches("grayscale") {
+        let input_file = matches.get_one::<String>("INFILE").expect("required").clone();
+        let output_file = matches.get_one::<String>("OUTFILE").expect("required").clone();
+
+        grayscale(input_file, output_file);
+    }
+
+    if let Some(matches) = matches.subcommand_matches("generate") {
+        let output_file = matches.get_one::<String>("OUTFILE").expect("required").clone();
+        let width = *matches.get_one::<u32>("width").expect("has default value");
+        let height = *matches.get_one::<u32>("height").expect("has default value");
+        let color = parse_color(matches.get_one::<String>("color"));
+        let noise: bool = matches.get_flag("noise");
+
+        generate(output_file, width, height, color, noise);
+    }
+
+    if let Some(matches) = matches.subcommand_matches("fractal") {
+        let output_file = matches.get_one::<String>("OUTFILE").expect("required").clone();
+
+        fractal(output_file);
     }
 }
 
-fn print_usage_and_exit() {
-    println!("USAGE (when in doubt, use a .png extension on your filenames)");
-    println!("blur INFILE OUTFILE");
-    println!("fractal OUTFILE");
-    // **OPTION**
-    // Print useful information about what subcommands and arguments you can use
-    // println!("...");
-    std::process::exit(-1);
+fn open_image(path: String) -> DynamicImage {
+   let message = format!("Failed to open: {}", path);
+    image::open(&path).expect(&message)
 }
 
-fn blur(infile: String, outfile: String) {
+fn save_image(image: DynamicImage, path: String) {
+    let message = format!("Failed to save to: {}", path);
+    image.save(path).expect(&message);
+}
+
+fn blur(infile: String, outfile: String, amount: f32) {
     // Here's how you open an existing image file
-    let img = image::open(infile).expect("Failed to open INFILE.");
-    // **OPTION**
-    // Parse the blur amount (an f32) from the command-line and pass it through
-    // to this function, instead of hard-coding it to 2.0.
-    let img2 = img.blur(2.0);
+    let img = open_image(infile);
+    let img2 = img.blur(amount);
     // Here's how you save an image to a file.
     img2.save(outfile).expect("Failed writing OUTFILE.");
 }
 
-fn brighten(infile: String, outfile: String) {
-    // See blur() for an example of how to open / save an image.
-
-    // .brighten() takes one argument, an i32.  Positive numbers brighten the
-    // image. Negative numbers darken it.  It returns a new image.
-
-    // Challenge: parse the brightness amount from the command-line and pass it
-    // through to this function.
+fn brighten(infile: String, outfile: String, delta: i32) {
+    println!("Brightening {} by {}... Saving result to: {}", infile, delta, outfile);
+    let original = open_image(infile);
+    let changed = original.brighten(delta);
+    save_image(changed, outfile);
 }
 
-fn crop(infile: String, outfile: String) {
-    // See blur() for an example of how to open an image.
+fn crop(infile: String, outfile: String, geometry: Geometry) {
+    let original = image::open(&infile).expect("Failed to open INFILE");
 
-    // .crop() takes four arguments: x: u32, y: u32, width: u32, height: u32
-    // You may hard-code them, if you like.  It returns a new image.
+    let width = match(geometry.width) {
+        Some(width) => {
+            width
+        }
+        None => {
+            original.width()
+        }
+    };
 
-    // Challenge: parse the four values from the command-line and pass them
-    // through to this function.
+    let height = match(geometry.height) {
+        Some(height) => {
+            height
+        }
+        None => {
+            original.height()
+        }
+    };
 
-    // See blur() for an example of how to save the image.
+    println!("Cropping {} from ({}, {}) to ({}, {})...", infile, geometry.left, geometry.top, width, height);
+    println!("Saving result to {}...", outfile);
+
+    let cropped = original.crop_imm(geometry.left, geometry.top, width, height);
+
+    cropped.save(outfile).expect("Failed to save to OUTFILE")
 }
 
-fn rotate(infile: String, outfile: String) {
-    // See blur() for an example of how to open an image.
+fn rotate(infile: String, outfile: String, angle: u16) {
+    println!("Rotating {} {} degrees...\nSaving result to: {}...", infile, angle, outfile);
 
-    // There are 3 rotate functions to choose from (all clockwise):
-    //   .rotate90()
-    //   .rotate180()
-    //   .rotate270()
-    // All three methods return a new image.  Pick one and use it!
+    let original = open_image(infile);
 
-    // Challenge: parse the rotation amount from the command-line, pass it
-    // through to this function to select which method to call.
+    let rotated = match angle {
+        90 => original.rotate90(),
+        180 => original.rotate180(),
+        270 => original.rotate270(),
+        _ => panic!("Not a valid angle: {}", angle)
+    };
 
-    // See blur() for an example of how to save the image.
+    save_image(rotated, outfile);
 }
 
 fn invert(infile: String, outfile: String) {
-    // See blur() for an example of how to open an image.
+    println!("Inverting {}'s colors...\nSaving resulto to {}...", infile, outfile);
 
-    // .invert() takes no arguments and converts the image in-place, so you
-    // will use the same image to save out to a different file.
-
-    // See blur() for an example of how to save the image.
+    let mut image = open_image(infile);
+    image.invert();
+    save_image(image, outfile);
 }
 
 fn grayscale(infile: String, outfile: String) {
-    // See blur() for an example of how to open an image.
+   println!("Converting {} to grayscale...\nSaving result to {}...", infile, outfile);
 
-    // .grayscale() takes no arguments. It returns a new image.
-
-    // See blur() for an example of how to save the image.
+   let original = open_image(infile);
+   let grayscale = original.grayscale();
+   save_image(grayscale, outfile);
 }
 
-fn generate(outfile: String) {
-    // Create an ImageBuffer -- see fractal() for an example
+fn generate(outfile: String, width: u32, height: u32, color: [u8; 3], noise: bool) {
+    let noisy = if noise { "noisy " } else { "" };
+    println!("Generating a {}{} by {} pixels image with color {:?}...", noisy, width, height, color);
+    println!("Saving output to {}...", outfile);
 
-    // Iterate over the coordinates and pixels of the image -- see fractal() for an example
+    let mut buffer = image::RgbImage::new(width, height);
 
-    // Set the image to some solid color. -- see fractal() for an example
+    let (mut lbound, mut ubound): (i16, i16) = (0, 0);
+    let mut rng = rand::thread_rng();
+    let mut pixel_color = color.clone();
 
-    // Challenge: parse some color data from the command-line, pass it through
-    // to this function to use for the solid color.
+    if noise {
+        let max = *pixel_color.iter().max().unwrap();
+        let min = *pixel_color.iter().min().unwrap();
+        ubound = 255 - (max as i16);
+        lbound = 0 - (min as i16);
+    }
 
-    // Challenge 2: Generate something more interesting!
+    for x in 0..width {
+        for y in 0..height {
+            if noise {
+                pixel_color = color.clone();
+                let delta = rng.gen_range(lbound..=ubound);
 
-    // See blur() for an example of how to save the image
+                for i in 0..3 {
+                    let component = pixel_color[i] as i16;
+                    let new_component = component + delta;
+                    pixel_color[i] = (new_component) as u8;
+                }
+            }
+
+            buffer.put_pixel(x, y, Rgb(pixel_color));
+        }
+    }
+
+    buffer.save(outfile).unwrap();
 }
 
 // This code was adapted from https://github.com/PistonDevelopers/image

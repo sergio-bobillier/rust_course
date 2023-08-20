@@ -2,6 +2,7 @@ mod blur_factory;
 mod brighten_factory;
 mod crop_factory;
 mod fractal_factory;
+mod generate_factory;
 mod grayscale_factory;
 mod invert_factory;
 mod parameter_fetcher;
@@ -14,6 +15,7 @@ use blur_factory::BlurFactory;
 use brighten_factory::BrightenFactory;
 use crop_factory::CropFactory;
 use fractal_factory::FractalFactory;
+use generate_factory::GenerateFactory;
 use grayscale_factory::GrayscaleFactory;
 use invert_factory::InvertFactory;
 use rotate_factory::RotateFactory;
@@ -97,6 +99,10 @@ impl CommandsFactory {
                 let factory = FractalFactory::new(command.parameters);
                 let fractal = factory.create()?;
                 processing_commands.push(Box::new(fractal));
+            } else if command.name == "generate" {
+                let mut factory = GenerateFactory::new(command.parameters);
+                let generate = factory.create()?;
+                processing_commands.push(Box::new(generate));
             } else {
                 return Err(format!("Unrecognized command: '{}'", command.name));
             }

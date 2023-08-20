@@ -37,13 +37,18 @@ use std::process::exit;
 use processing_commands::ProcessingCommand;
 use command_factories::CommandsFactory;
 
+const DEFAULT_WIDTH:u32 = 5;
+const DEFAULT_HEIGHT:u32 = 5;
+
 const ERR_NOT_ENOUGH_ARGUMENTS:i32 = 1;
 const ERR_COMMAND_PARSING_ERROR:i32 = 2;
 
 fn print_usage() {
     println!("Usage\n");
 
-    println!("  mirage INFILE [COMMAND_1 [OPTIONS]] ... [COMMAND_N [OPTIONS]] OUTFILE\n");
+    println!("mirage [INFILE|--] [COMMAND_1 [OPTIONS]] ... [COMMAND_N [OPTIONS]] OUTFILE\n");
+
+    println!("Use -- as INFILE to create an empty image instead of reading one from disk.\n");
 
     println!("Available commands:\n");
 
@@ -53,6 +58,7 @@ fn print_usage() {
     println!("  • --rotate ANGLE");
     println!("  • --invert");
     println!("  • --grayscale");
+    println!("  • --fractal");
 
     println!("\nNote: - can be used as placeholder for optional parameters\n");
 }
@@ -116,9 +122,13 @@ fn main() {
 }
 
 fn open_image(path: &String) -> DynamicImage {
-    println!("Reading {}...", path);
-    let message = format!("Failed to open: {}", path);
-    image::open(path).expect(&message)
+    if path == "--" {
+        DynamicImage::new_rgb8(DEFAULT_WIDTH, DEFAULT_HEIGHT)
+    } else {
+        println!("Reading {}...", path);
+        let message = format!("Failed to open: {}", path);
+        image::open(path).expect(&message)
+    }
 }
 
 fn save_image(image: DynamicImage, path: &String) {

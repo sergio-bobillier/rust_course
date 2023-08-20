@@ -6,6 +6,8 @@ mod invert;
 mod processing_command;
 mod rotate;
 
+pub mod generators;
+
 pub use self::processing_command::ProcessingCommand;
 pub use self::blur::Blur;
 pub use self::brighten::Brighten;

@@ -3,8 +3,10 @@ use std::num::ParseIntError;
 use rand::Rng;
 
 use crate::processing_commands::generators::Generate;
+use super::overlay_fetcher::fetch_overlay;
 use super::parameter_fetcher::fetch_parameter;
 use super::parameter_fetcher::fetch_and_parse;
+use super::parameter_fetcher::fetch_option;
 use crate::size::Size;
 
 const COLOR_FORMAT_ERROR: &str = "The given color doesn't have the format: r,g,b (all integers betweem 0 and 255)";
@@ -32,16 +34,11 @@ impl GenerateFactory {
         let color_string = fetch_parameter(&mut self.parameters);
         let color = self.parse_color(color_string)?;
 
-        let noise_string = fetch_parameter(&mut self.parameters);
+        let noise = fetch_option(&mut self.parameters, "noise");
 
-        let noise = match noise_string {
-            Some(string) => {
-                string == "-noise"
-            },
-            None => { false }
-        };
+        let overlay = fetch_overlay(&mut self.parameters, command)?;
 
-        Ok(Generate::new(size, color, noise))
+        Ok(Generate::new(size, color, noise, overlay))
     }
 
     fn parse_color(&self, string: Option<String>) -> Result<[u8; 3], String> {

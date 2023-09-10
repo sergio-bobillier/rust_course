@@ -2,14 +2,16 @@ use image::DynamicImage;
 
 use crate::processing_commands::ProcessingCommand;
 use crate::size::Size;
+use crate::overlay::Overlay;
 
 pub struct Fractal {
-    size: Size
+    size: Size,
+    overlay: Option<Overlay>
 }
 
 impl Fractal {
-    pub fn new(size: Size) -> Self {
-        Self { size }
+    pub fn new(size: Size, overlay: Option<Overlay>) -> Self {
+        Self { size, overlay }
     }
 }
 
@@ -20,7 +22,7 @@ impl ProcessingCommand for Fractal {
         self.size.resolve(image);
     }
 
-    fn run(&self, _imge: DynamicImage) -> DynamicImage {
+    fn run(&self, original: DynamicImage) -> DynamicImage {
         let width = self.size.width();
         let height = self.size.height();
         let mut image = DynamicImage::new_rgb8(width, height);
@@ -52,7 +54,10 @@ impl ProcessingCommand for Fractal {
             *pixel = image::Rgb([red, green, blue]);
         }
 
-        image
+        match &self.overlay {
+            Some(overlay) => { overlay.run(original, image) },
+            None => image
+        }
     }
 
     fn description(&self) -> String {

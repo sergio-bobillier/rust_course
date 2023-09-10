@@ -5,6 +5,7 @@ mod fractal_factory;
 mod generate_factory;
 mod grayscale_factory;
 mod invert_factory;
+mod overlay_fetcher;
 mod parameter_fetcher;
 mod rotate_factory;
 

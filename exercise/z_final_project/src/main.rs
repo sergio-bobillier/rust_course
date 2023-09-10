@@ -27,6 +27,7 @@
 
 mod size;
 mod geometry;
+mod overlay;
 mod processing_commands;
 mod command_factories;
 

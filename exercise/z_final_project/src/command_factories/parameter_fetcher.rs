@@ -1,5 +1,16 @@
 use std::collections::VecDeque;
 
+pub fn fetch_option(parameters: &mut VecDeque<String>, name: &str) -> bool {
+    let string = fetch_parameter(parameters);
+
+    match string {
+        Some(string) => {
+            string == format!("-{}", name)
+        },
+        None => { false }
+    }
+}
+
 pub fn fetch_parameter(parameters: &mut VecDeque<String>) -> Option<String> {
     let string = parameters.pop_front();
 

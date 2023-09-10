@@ -4,16 +4,18 @@ use rand::Rng;
 
 use crate::processing_commands::ProcessingCommand;
 use crate::size::Size;
+use crate::overlay::Overlay;
 
 pub struct Generate {
     size: Size,
     color: [u8; 3],
-    noise: bool
+    noise: bool,
+    overlay: Option<Overlay>
 }
 
 impl Generate {
-    pub fn new(size: Size, color: [u8; 3], noise: bool) -> Self {
-        Self { size, color, noise }
+    pub fn new(size: Size, color: [u8; 3], noise: bool, overlay: Option<Overlay>) -> Self {
+        Self { size, color, noise, overlay }
     }
 }
 
@@ -24,7 +26,7 @@ impl ProcessingCommand for Generate {
         self.size.resolve(image);
     }
 
-    fn run(&self, _image: DynamicImage) -> DynamicImage {
+    fn run(&self, original: DynamicImage) -> DynamicImage {
         let width = self.size.width();
         let height = self.size.height();
 
@@ -59,7 +61,11 @@ impl ProcessingCommand for Generate {
             }
         }
 
-        image
+        match &self.overlay {
+            Some(overlay) => overlay.run(original, image),
+            None => image
+        }
+
     }
 
     fn description(&self) -> String {

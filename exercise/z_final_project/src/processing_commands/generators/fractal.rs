@@ -1,30 +1,33 @@
 use image::DynamicImage;
 
 use crate::processing_commands::ProcessingCommand;
-
-const DEFAULT_WIDTH:u32 = 800;
-const DEFAULT_HEIGHT:u32 = 800;
+use crate::size::Size;
 
 pub struct Fractal {
-    width: u32,
-    height: u32
+    size: Size
 }
 
 impl Fractal {
-    pub fn new() -> Self {
-        Self { width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT }
+    pub fn new(size: Size) -> Self {
+        Self { size }
     }
 }
 
 impl ProcessingCommand for Fractal {
     fn name(&self) -> String { "Fractal".to_string() }
 
+    fn pre_process(&mut self, image: &DynamicImage) {
+        self.size.resolve(image);
+    }
+
     fn run(&self, _imge: DynamicImage) -> DynamicImage {
-        let mut image = DynamicImage::new_rgb8(self.width, self.height);
+        let width = self.size.width();
+        let height = self.size.height();
+        let mut image = DynamicImage::new_rgb8(width, height);
         let buffer = image.as_mut_rgb8().unwrap();
 
-        let scale_x = 3.0 / self.width as f32;
-        let scale_y = 3.0 / self.height as f32;
+        let scale_x = 3.0 / width as f32;
+        let scale_y = 3.0 / height as f32;
 
         // Iterate over the coordinates and pixels of the image
         for (x, y, pixel) in buffer.enumerate_pixels_mut() {
@@ -53,6 +56,6 @@ impl ProcessingCommand for Fractal {
     }
 
     fn description(&self) -> String {
-        format!("Generated {}x{} fractal", self.width, self.height)
+        format!("Generated {} fractal", self.size)
     }
 }

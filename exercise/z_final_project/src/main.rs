@@ -25,6 +25,7 @@
 //
 //     let positive_number: u32 = some_string.parse().expect("Failed to parse a number");
 
+mod size;
 mod geometry;
 mod processing_commands;
 mod command_factories;

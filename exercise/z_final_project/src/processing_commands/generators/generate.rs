@@ -3,25 +3,32 @@ use image::Rgb;
 use rand::Rng;
 
 use crate::processing_commands::ProcessingCommand;
+use crate::size::Size;
 
 pub struct Generate {
-    width: u32,
-    height: u32,
+    size: Size,
     color: [u8; 3],
     noise: bool
 }
 
 impl Generate {
-    pub fn new(width: u32, height: u32, color: [u8; 3], noise: bool) -> Self {
-        Self { height, width, color, noise }
+    pub fn new(size: Size, color: [u8; 3], noise: bool) -> Self {
+        Self { size, color, noise }
     }
 }
 
 impl ProcessingCommand for Generate {
     fn name(&self) -> String { "Generate".to_string() }
 
+    fn pre_process(&mut self, image: &DynamicImage) {
+        self.size.resolve(image);
+    }
+
     fn run(&self, _image: DynamicImage) -> DynamicImage {
-        let mut image = DynamicImage::new_rgb8(self.width, self.height);
+        let width = self.size.width();
+        let height = self.size.height();
+
+        let mut image = DynamicImage::new_rgb8(width, height);
         let buffer = image.as_mut_rgb8().unwrap();
 
         let (mut lbound, mut ubound): (i16, i16) = (0, 0);
@@ -35,8 +42,8 @@ impl ProcessingCommand for Generate {
             lbound = 0 - (min as i16);
         }
 
-        for x in 0..self.width {
-            for y in 0..self.height {
+        for x in 0..width {
+            for y in 0..height {
                 if self.noise {
                     pixel_color = self.color.clone();
                     let delta = rng.gen_range(lbound..=ubound);
@@ -59,8 +66,8 @@ impl ProcessingCommand for Generate {
         let noisy = if self.noise { "noisy " } else { "" };
 
         format!(
-            "Generated a {}{} by {} pixels image with color {:?}...",
-            noisy, self.width, self.height, self.color
+            "Generated a {}{} pixels image with color {:?}...",
+            noisy, self.size, self.color
         )
     }
 }

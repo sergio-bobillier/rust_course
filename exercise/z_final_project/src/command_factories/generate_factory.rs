@@ -4,7 +4,8 @@ use rand::Rng;
 
 use crate::processing_commands::generators::Generate;
 use super::parameter_fetcher::fetch_parameter;
-use super::parameter_fetcher::require_and_parse;
+use super::parameter_fetcher::fetch_and_parse;
+use crate::size::Size;
 
 const COLOR_FORMAT_ERROR: &str = "The given color doesn't have the format: r,g,b (all integers betweem 0 and 255)";
 
@@ -21,10 +22,12 @@ impl GenerateFactory {
         let command = "generate";
 
         let parameter = "width";
-        let width = require_and_parse(&mut self.parameters, parameter, command)?;
+        let width = fetch_and_parse(&mut self.parameters, parameter, command)?;
 
         let parameter = "height";
-        let height = require_and_parse(&mut self.parameters, parameter, command)?;
+        let height = fetch_and_parse(&mut self.parameters, parameter, command)?;
+
+        let size = Size::new(width, height);
 
         let color_string = fetch_parameter(&mut self.parameters);
         let color = self.parse_color(color_string)?;
@@ -38,7 +41,7 @@ impl GenerateFactory {
             None => { false }
         };
 
-        Ok(Generate::new(width, height, color, noise))
+        Ok(Generate::new(size, color, noise))
     }
 
     fn parse_color(&self, string: Option<String>) -> Result<[u8; 3], String> {

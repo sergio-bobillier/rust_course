@@ -96,7 +96,7 @@ impl CommandsFactory {
                 let grayscale = factory.create()?;
                 processing_commands.push(Box::new(grayscale));
             } else if command.name == "fractal" {
-                let factory = FractalFactory::new(command.parameters);
+                let mut factory = FractalFactory::new(command.parameters);
                 let fractal = factory.create()?;
                 processing_commands.push(Box::new(fractal));
             } else if command.name == "generate" {
